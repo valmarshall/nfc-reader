@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NFC UID Reader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #0b0e13;
+        --surface: #131720;
+        --surface2: #1a2030;
+        --border: #2a3348;
+        --accent: #00e5a0;
+        --accent2: #0077ff;
+        --text: #e8edf5;
+        --muted: #6b7a99;
+        --danger: #ff4d6d;
+        --warn: #ffb347;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Syne", sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem 1rem 4rem;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 3rem;
+      }
+
+      .logo {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 0.5rem;
+      }
+
+      .logo-icon {
+        width: 40px;
+        height: 40px;
+        border: 2px solid var(--accent);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: pulse-ring 2.5s ease-in-out infinite;
+      }
+
+      @keyframes pulse-ring {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(0, 229, 160, 0.4);
+        }
+        50% {
+          box-shadow: 0 0 0 10px rgba(0, 229, 160, 0);
+        }
+      }
+
+      .logo-icon svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      h1 {
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
+        font-weight: 800;
+        letter-spacing: -0.5px;
+      }
+
+      h1 span {
+        color: var(--accent);
+      }
+
+      .subtitle {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-top: 0.4rem;
+        letter-spacing: 0.5px;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+        width: 100%;
+        max-width: 520px;
+        margin-bottom: 1.5rem;
+      }
+
+      /* Scan area */
+      .scan-zone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1rem 0;
+      }
+
+      .nfc-visual {
+        position: relative;
+        width: 120px;
+        height: 120px;
+      }
+
+      .nfc-visual .ring {
+        position: absolute;
+        border-radius: 50%;
+        border: 2px solid var(--accent);
+        opacity: 0;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        animation: none;
+      }
+
+      .nfc-visual .center-icon {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 50px;
+        height: 50px;
+        background: var(--surface2);
+        border: 2px solid var(--accent);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+      }
+
+      .nfc-visual .center-icon svg {
+        width: 28px;
+        height: 28px;
+        fill: var(--accent);
+      }
+
+      /* Active scanning animation */
+      .scanning .ring:nth-child(1) {
+        width: 70px;
+        height: 70px;
+        animation: ripple 2s ease-out infinite 0s;
+      }
+      .scanning .ring:nth-child(2) {
+        width: 95px;
+        height: 95px;
+        animation: ripple 2s ease-out infinite 0.4s;
+      }
+      .scanning .ring:nth-child(3) {
+        width: 120px;
+        height: 120px;
+        animation: ripple 2s ease-out infinite 0.8s;
+      }
+
+      @keyframes ripple {
+        0% {
+          opacity: 0.7;
+          transform: translate(-50%, -50%) scale(0.8);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(1);
+        }
+      }
+
+      .success .center-icon {
+        border-color: var(--accent);
+        background: rgba(0, 229, 160, 0.1);
+      }
+      .error .center-icon {
+        border-color: var(--danger);
+      }
+      .error .ring {
+        border-color: var(--danger) !important;
+      }
+
+      .btn {
+        width: 100%;
+        padding: 0.9rem 1.5rem;
+        border-radius: 10px;
+        border: none;
+        font-family: "Syne", sans-serif;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        letter-spacing: 0.3px;
+        transition: all 0.2s ease;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: #0b0e13;
+      }
+      .btn-primary:hover {
+        background: #00ffb2;
+        transform: translateY(-1px);
+      }
+      .btn-primary:active {
+        transform: scale(0.98);
+      }
+      .btn-primary:disabled {
+        background: var(--border);
+        color: var(--muted);
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn-secondary {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        margin-top: 0.5rem;
+      }
+      .btn-secondary:hover {
+        border-color: var(--muted);
+        color: var(--text);
+      }
+
+      /* Status badge */
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: "Space Mono", monospace;
+        font-size: 0.78rem;
+        padding: 4px 12px;
+        border-radius: 20px;
+        letter-spacing: 0.5px;
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+      }
+
+      .status-idle {
+        background: var(--surface2);
+        color: var(--muted);
+      }
+      .status-idle .status-dot {
+        background: var(--muted);
+      }
+
+      .status-scanning {
+        background: rgba(0, 119, 255, 0.15);
+        color: #66aaff;
+      }
+      .status-scanning .status-dot {
+        background: #66aaff;
+        animation: blink 1s step-end infinite;
+      }
+
+      .status-success {
+        background: rgba(0, 229, 160, 0.12);
+        color: var(--accent);
+      }
+      .status-success .status-dot {
+        background: var(--accent);
+      }
+
+      .status-error {
+        background: rgba(255, 77, 109, 0.12);
+        color: var(--danger);
+      }
+      .status-error .status-dot {
+        background: var(--danger);
+      }
+
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+
+      /* UID Result */
+      .uid-display {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 0;
+      }
+
+      .uid-label {
+        font-size: 0.72rem;
+        color: var(--muted);
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+      }
+
+      .uid-value {
+        font-family: "Space Mono", monospace;
+        font-size: clamp(1.1rem, 3vw, 1.4rem);
+        font-weight: 700;
+        color: var(--accent);
+        word-break: break-all;
+        line-height: 1.4;
+        letter-spacing: 2px;
+      }
+
+      .uid-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .copy-btn {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        border-radius: 8px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 0.78rem;
+        font-family: "Syne", sans-serif;
+        white-space: nowrap;
+        transition: all 0.2s;
+        flex-shrink: 0;
+      }
+      .copy-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .uid-meta {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+      }
+
+      .meta-item {
+        flex: 1;
+        min-width: 100px;
+      }
+      .meta-label {
+        font-size: 0.7rem;
+        color: var(--muted);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+      }
+      .meta-value {
+        font-family: "Space Mono", monospace;
+        font-size: 0.85rem;
+        color: var(--text);
+      }
+
+      /* History */
+      .section-title {
+        font-size: 0.75rem;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .clear-btn {
+        background: none;
+        border: none;
+        font-family: "Syne", sans-serif;
+        font-size: 0.7rem;
+        color: var(--muted);
+        cursor: pointer;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        transition: color 0.2s;
+      }
+      .clear-btn:hover {
+        color: var(--danger);
+      }
+
+      .history-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .history-item {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        cursor: pointer;
+        transition: border-color 0.2s;
+      }
+      .history-item:hover {
+        border-color: var(--accent);
+      }
+
+      .history-uid {
+        font-family: "Space Mono", monospace;
+        font-size: 0.82rem;
+        color: var(--text);
+        letter-spacing: 1px;
+      }
+
+      .history-time {
+        font-size: 0.72rem;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .empty-history {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.85rem;
+        padding: 1.5rem 0;
+      }
+
+      .support-banner {
+        max-width: 520px;
+        width: 100%;
+        text-align: center;
+        font-size: 0.8rem;
+        color: var(--muted);
+        line-height: 1.6;
+        padding: 1rem;
+        border: 1px dashed var(--border);
+        border-radius: 10px;
+      }
+
+      .support-banner strong {
+        color: var(--warn);
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .tag-type-badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-family: "Space Mono", monospace;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: rgba(0, 119, 255, 0.15);
+        color: #66aaff;
+        border: 1px solid rgba(0, 119, 255, 0.3);
+        margin-left: 8px;
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#00e5a0"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"
+            />
+            <path
+              d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"
+            />
+            <circle cx="12" cy="12" r="2" />
+          </svg>
+        </div>
+        <h1>NFC <span>UID</span> Reader</h1>
+      </div>
+      <p class="subtitle">Baca UID kartu NFC menggunakan Web NFC API</p>
+    </header>
+
+    <!-- Scan Card -->
+    <div class="card" id="mainCard">
+      <div class="scan-zone">
+        <div class="nfc-visual" id="nfcVisual">
+          <div class="ring"></div>
+          <div class="ring"></div>
+          <div class="ring"></div>
+          <div class="center-icon">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-9 11H9V7h2v6zm4 0h-2V7h2v6z"
+              />
+            </svg>
+          </div>
+        </div>
+
+        <div class="status-badge status-idle" id="statusBadge">
+          <span class="status-dot"></span>
+          <span id="statusText">Siap</span>
+        </div>
+
+        <button class="btn btn-primary" id="scanBtn" onclick="startScan()">
+          Mulai Scan NFC
+        </button>
+        <button
+          class="btn btn-secondary hidden"
+          id="stopBtn"
+          onclick="stopScan()"
+        >
+          Berhenti
+        </button>
+      </div>
+
+      <!-- UID Result -->
+      <div
+        class="uid-display hidden"
+        id="uidDisplay"
+        style="margin-top: 1.5rem"
+      >
+        <div class="uid-label">UID Kartu</div>
+        <div class="uid-row">
+          <div class="uid-value" id="uidValue">—</div>
+          <button class="copy-btn" onclick="copyUID()">Salin</button>
+        </div>
+        <div class="uid-meta">
+          <div class="meta-item">
+            <div class="meta-label">Panjang</div>
+            <div class="meta-value" id="uidLength">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Format</div>
+            <div class="meta-value" id="uidFormat">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Tipe Tag</div>
+            <div class="meta-value" id="uidTagType">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Waktu</div>
+            <div class="meta-value" id="uidTime">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Riwayat -->
+    <div class="card" id="historyCard">
+      <div class="section-title">
+        <span>Riwayat Scan</span>
+        <button class="clear-btn" onclick="clearHistory()">Hapus Semua</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="empty-history" id="emptyHistory">
+          Belum ada kartu yang dipindai
+        </div>
+      </div>
+    </div>
+
+    <!-- Support Notice -->
+    <div class="support-banner" id="supportBanner">
+      <strong>⚠ Perhatian</strong><br />
+      Web NFC API hanya didukung di
+      <strong style="color: #00e5a0">Chrome / Android</strong> (versi 89+)
+      dengan HTTPS.<br />
+      Tidak tersedia di iOS / Safari / Firefox.
+    </div>
+
+    <script>
+      let nfcReader = null;
+      let isScanning = false;
+      let scanHistory = JSON.parse(localStorage.getItem("nfc_history") || "[]");
+
+      function setStatus(state, text) {
+        const badge = document.getElementById("statusBadge");
+        const statusText = document.getElementById("statusText");
+        const visual = document.getElementById("nfcVisual");
+
+        badge.className = "status-badge status-" + state;
+        statusText.textContent = text;
+
+        visual.className = "nfc-visual";
+        if (state === "scanning") visual.classList.add("scanning");
+        if (state === "success") visual.classList.add("success");
+        if (state === "error") visual.classList.add("error");
+      }
+
+      function bytesToHex(bytes) {
+        return Array.from(bytes)
+          .map((b) => b.toString(16).padStart(2, "0").toUpperCase())
+          .join(":");
+      }
+
+      function detectTagType(byteLength) {
+        if (byteLength === 4) return "MIFARE Classic / Ultralight";
+        if (byteLength === 7) return "MIFARE Ultralight / DESFire";
+        if (byteLength === 10) return "ISO 15693";
+        return "Tidak diketahui";
+      }
+
+      function displayUID(uid, serial, tech) {
+        const hex = bytesToHex(uid);
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString("id-ID");
+
+        document.getElementById("uidValue").textContent = hex;
+        document.getElementById("uidLength").textContent =
+          uid.byteLength + " byte";
+        document.getElementById("uidFormat").textContent = "HEX";
+        document.getElementById("uidTagType").textContent = detectTagType(
+          uid.byteLength,
+        );
+        document.getElementById("uidTime").textContent = timeStr;
+        document.getElementById("uidDisplay").classList.remove("hidden");
+
+        addToHistory(hex, uid.byteLength, timeStr);
+      }
+
+      function addToHistory(hex, byteLen, timeStr) {
+        const item = {
+          uid: hex,
+          bytes: byteLen,
+          time: timeStr,
+          ts: Date.now(),
+        };
+        scanHistory.unshift(item);
+        if (scanHistory.length > 20) scanHistory.pop();
+        localStorage.setItem("nfc_history", JSON.stringify(scanHistory));
+        renderHistory();
+      }
+
+      function renderHistory() {
+        const list = document.getElementById("historyList");
+        const empty = document.getElementById("emptyHistory");
+
+        if (scanHistory.length === 0) {
+          list.innerHTML = "";
+          list.appendChild(empty);
+          empty.classList.remove("hidden");
+          return;
+        }
+
+        list.innerHTML = "";
+        scanHistory.forEach((item, i) => {
+          const div = document.createElement("div");
+          div.className = "history-item";
+          div.onclick = () => {
+            navigator.clipboard.writeText(item.uid.replace(/:/g, ""));
+            showToast("UID disalin!");
+          };
+          div.innerHTML = `
+      <div>
+        <div class="history-uid">${item.uid}</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:2px;">${item.bytes} byte</div>
+      </div>
+      <div class="history-time">${item.time}</div>
+    `;
+          list.appendChild(div);
+        });
+      }
+
+      function clearHistory() {
+        scanHistory = [];
+        localStorage.setItem("nfc_history", "[]");
+        renderHistory();
+      }
+
+      function copyUID() {
+        const uid = document
+          .getElementById("uidValue")
+          .textContent.replace(/:/g, "");
+        if (uid && uid !== "—") {
+          navigator.clipboard
+            .writeText(uid)
+            .then(() => showToast("UID disalin ke clipboard!"));
+        }
+      }
+
+      function showToast(msg) {
+        const existing = document.querySelector(".toast");
+        if (existing) existing.remove();
+
+        const toast = document.createElement("div");
+        toast.className = "toast";
+        toast.textContent = msg;
+        toast.style.cssText = `
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #0b0e13;
+    font-family: 'Syne', sans-serif; font-weight: 600; font-size: 0.85rem;
+    padding: 0.6rem 1.4rem; border-radius: 100px;
+    animation: fadeup 0.3s ease forwards;
+    z-index: 999;
+  `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2500);
+      }
+
+      const style = document.createElement("style");
+      style.textContent = `@keyframes fadeup { from { opacity:0; transform:translateX(-50%) translateY(10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`;
+      document.head.appendChild(style);
+
+      async function startScan() {
+        if (!("NDEFReader" in window)) {
+          setStatus("error", "Web NFC tidak didukung");
+          showToast("Browser tidak mendukung Web NFC");
+          return;
+        }
+
+        try {
+          nfcReader = new NDEFReader();
+          await nfcReader.scan();
+
+          isScanning = true;
+          setStatus("scanning", "Dekatkan kartu NFC...");
+          document.getElementById("scanBtn").classList.add("hidden");
+          document.getElementById("stopBtn").classList.remove("hidden");
+
+          nfcReader.onreading = (event) => {
+            setStatus("success", "Kartu terdeteksi!");
+            displayUID(
+              event.serialNumber
+                ? new TextEncoder().encode(event.serialNumber)
+                : new Uint8Array(0),
+              event.serialNumber,
+              event.message?.records,
+            );
+
+            // Use serialNumber directly if available
+            const serial = event.serialNumber || "";
+            const bytes = serial.split(":").map((h) => parseInt(h, 16));
+            const uid8 = new Uint8Array(bytes.filter((b) => !isNaN(b)));
+
+            document.getElementById("uidValue").textContent =
+              serial.toUpperCase() || "TIDAK TERBACA";
+            document.getElementById("uidLength").textContent =
+              uid8.byteLength + " byte";
+            document.getElementById("uidFormat").textContent = "HEX";
+            document.getElementById("uidTagType").textContent = detectTagType(
+              uid8.byteLength,
+            );
+            document.getElementById("uidTime").textContent =
+              new Date().toLocaleTimeString("id-ID");
+            document.getElementById("uidDisplay").classList.remove("hidden");
+
+            addToHistory(
+              serial.toUpperCase(),
+              uid8.byteLength,
+              new Date().toLocaleTimeString("id-ID"),
+            );
+          };
+
+          nfcReader.onreadingerror = () => {
+            setStatus("error", "Gagal membaca kartu");
+          };
+        } catch (err) {
+          if (err.name === "NotAllowedError") {
+            setStatus("error", "Izin NFC ditolak");
+            showToast("Izin NFC ditolak oleh pengguna");
+          } else {
+            setStatus("error", "Gagal: " + err.message);
+            showToast("Error: " + err.message);
+          }
+          document.getElementById("scanBtn").classList.remove("hidden");
+          document.getElementById("stopBtn").classList.add("hidden");
+        }
+      }
+
+      function stopScan() {
+        nfcReader = null;
+        isScanning = false;
+        setStatus("idle", "Siap");
+        document.getElementById("scanBtn").classList.remove("hidden");
+        document.getElementById("stopBtn").classList.add("hidden");
+      }
+
+      // Check support on load
+      window.addEventListener("DOMContentLoaded", () => {
+        renderHistory();
+        if (!("NDEFReader" in window)) {
+          document.getElementById("supportBanner").style.borderColor =
+            "var(--danger)";
+          document.getElementById("supportBanner").style.background =
+            "rgba(255,77,109,0.05)";
+        }
+      });
+    </script>
+  </body>
+</html>
